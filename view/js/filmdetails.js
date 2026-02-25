@@ -85,8 +85,6 @@ function displayFilmDetails(film) {
     { label: "Durée", value: film.duree ? `${film.duree} min` : "N/A" },
     { label: "Pays", value: film.pays_productions || "N/A" },
   ];
-
-  // ✅ CORRIGÉ : affiche l'image quelle que soit la source
   const posterContent = film.imgPath
       ? `<img src="${film.imgPath}" alt="${film.title || "Affiche"}" onerror="this.style.display='none';">`
       : `
