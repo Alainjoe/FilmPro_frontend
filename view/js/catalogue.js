@@ -6,6 +6,7 @@ const DETAILS_PAGE = '/html/filmdetails.html';
 
 window.addEventListener('scroll', () => {
     const navbar = document.getElementById('navbar');
+    if (!navbar) return;
     if (window.scrollY > 50) navbar.classList.add('scrolled');
     else navbar.classList.remove('scrolled');
 });
@@ -18,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function showSkeleton(count = 6) {
     const container = document.getElementById('films-container');
+    if (!container) return;
+
     let html = '';
     for (let i = 0; i < count; i++) {
         html += `
@@ -52,8 +55,8 @@ async function checkAuth() {
             }
         }
     } catch (error) {
-        console.error('Erreur d\'authentification:', error);
-        window.location.href = LOGIN_PAGE; 
+        console.error("Erreur d'authentification:", error);
+        window.location.href = LOGIN_PAGE;
     }
 }
 
@@ -77,6 +80,8 @@ async function loadGenres() {
 
 function populateGenreDropdown() {
     const genreSelect = document.getElementById('search-genre');
+    if (!genreSelect) return;
+
     genreSelect.innerHTML = '<option value="">Tous les genres</option>';
 
     ['Action', 'Aventure', 'Drame', 'Comédie', 'Science-Fiction', 'Horreur', 'Romance', 'Documentaire']
@@ -101,7 +106,7 @@ function populateGenreDropdown() {
 
 function displayUserInfo(user) {
     const userDetails = document.getElementById('user-details');
-    if (!user) return;
+    if (!userDetails || !user) return;
 
     const membershipDate = user.date_inscription
         ? new Date(user.date_inscription).toLocaleDateString('fr-FR', {
@@ -137,6 +142,7 @@ async function loadFilms(filters = {}) {
         }
 
         const response = await fetch(url, { credentials: 'include' });
+
         if (response.status === 401) {
             window.location.href = LOGIN_PAGE;
             return;
@@ -161,6 +167,8 @@ async function loadFilms(filters = {}) {
 
 function updateSearchResultsInfo(count, filters) {
     const infoElement = document.getElementById('search-results-info');
+    if (!infoElement) return;
+
     const hasFilters = Object.keys(filters).length > 0;
 
     if (hasFilters) {
@@ -182,6 +190,7 @@ function updateSearchResultsInfo(count, filters) {
 
 function displayFilms(films) {
     const container = document.getElementById('films-container');
+    if (!container) return;
 
     if (!films || films.length === 0) {
         container.innerHTML = '<div class="error">Aucun film ne correspond à vos critères.</div>';
@@ -191,10 +200,10 @@ function displayFilms(films) {
     container.innerHTML = '';
 
     films.forEach(film => {
-        const availableCopies  = film.available_copies || 0;
-        const isAvailable      = availableCopies > 0;
+        const availableCopies = film.available_copies || 0;
+        const isAvailable = availableCopies > 0;
         const availabilityClass = isAvailable ? 'available' : 'unavailable';
-        const availabilityText  = isAvailable
+        const availabilityText = isAvailable
             ? `${availableCopies} copie${availableCopies > 1 ? 's' : ''} disponible${availableCopies > 1 ? 's' : ''}`
             : 'Indisponible';
 
@@ -214,7 +223,7 @@ function displayFilms(films) {
             <div class="film-image">
                 ${film.imgPath
                     ? `<img src="${film.imgPath}" alt="${film.title || 'Affiche'}"
-                       onerror="this.style.display='none'; this.parentElement.innerHTML=\`${posterFallback}\`;">`
+                           onerror="this.style.display='none'; this.parentElement.innerHTML=\`${posterFallback}\`;">`
                     : posterFallback}
                 <div class="availability ${availabilityClass}">${availabilityText}</div>
                 <div class="film-overlay">
@@ -249,6 +258,30 @@ function displayFilms(films) {
     });
 }
 
+function searchFilms() {
+    const filters = {
+        title: document.getElementById('search-title')?.value.trim(),
+        name:  document.getElementById('search-name')?.value.trim(),
+        genre: document.getElementById('search-genre')?.value
+    };
+
+    Object.keys(filters).forEach(key => { if (!filters[key]) delete filters[key]; });
+    loadFilms(filters);
+}
+
+function clearSearch() {
+    const t = document.getElementById('search-title');
+    const n = document.getElementById('search-name');
+    const g = document.getElementById('search-genre');
+
+    if (t) t.value = '';
+    if (n) n.value = '';
+    if (g) g.value = '';
+
+    loadFilms();
+}
+
+// ✅ CORRECTION PRINCIPALE : bonne page détails sur Render
 function viewFilmDetails(filmId) {
     window.location.href = `${DETAILS_PAGE}?id=${filmId}`;
 }
@@ -288,15 +321,21 @@ async function louerFilm(filmId) {
 }
 
 function showError(message) {
-    document.getElementById('films-container').innerHTML =
-        `<div class="error">${message}</div>`;
+    const container = document.getElementById('films-container');
+    if (!container) return;
+    container.innerHTML = `<div class="error">${message}</div>`;
 }
 
-document.getElementById('logout-btn').addEventListener('click', async () => {
-    try {
-        await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' });
-    } catch (error) {
-        console.error('Erreur de déconnexion:', error);
-    } finally {
-        window.location.href = LOGIN_PAGE;
-});
+// ✅ FIX : fermeture correcte du listener (sinon ton JS casse)
+const logoutBtn = document.getElementById('logout-btn');
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' });
+        } catch (error) {
+            console.error('Erreur de déconnexion:', error);
+        } finally {
+            window.location.href = LOGIN_PAGE;
+        }
+    });
+}
