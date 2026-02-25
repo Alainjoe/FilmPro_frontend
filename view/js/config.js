@@ -1,1 +1,1 @@
-const API_BASE_URL = 'https://filmpro-frontend.onrender.com';
+const API_BASE_URL = 'https://backend-1hwn.onrender.com';
