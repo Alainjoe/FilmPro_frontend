@@ -1,9 +1,8 @@
 const urlParams = new URLSearchParams(window.location.search);
 const filmId = urlParams.get("id");
 
-// ✅ Pages statiques Render
-const LOGIN_PAGE = "./html/login.html";
-const CATALOGUE_PAGE = "./html/catalogue.html";
+const LOGIN_PAGE = "../html/login.html";
+const CATALOGUE_PAGE = "../html/catalogue.html";
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!filmId) return showError("ID du film non spécifié.");
@@ -87,9 +86,8 @@ function displayFilmDetails(film) {
     { label: "Pays", value: film.pays_productions || "N/A" },
   ];
 
-  // AVANT
-const posterContent =
-    film.imgPath && film.imgPath.includes("themoviedb.org")
+  // ✅ CORRIGÉ : affiche l'image quelle que soit la source
+  const posterContent = film.imgPath
       ? `<img src="${film.imgPath}" alt="${film.title || "Affiche"}" onerror="this.style.display='none';">`
       : `
         <div class="film-poster-fallback">
