@@ -1,6 +1,6 @@
-const LOGIN_PAGE = '/html/login.html';
-const CATALOGUE_PAGE = '/html/catalogue.html';
-const DETAILS_PAGE = '/html/filmdetails.html';
+const LOGIN_PAGE = './html/login.html';
+const CATALOGUE_PAGE = './html/catalogue.html';
+const DETAILS_PAGE = './html/filmdetails.html';
 
 window.addEventListener('scroll', () => {
   const navbar = document.getElementById('navbar');
