@@ -138,7 +138,7 @@ function displayProfile(user) {
 
 async function loadRentalStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/location/mes-films`, { credentials: 'include' });
+        const response = await fetch(`${API_BASE_URL}/api/profil/mes-films`, { credentials: 'include' });
         if (response.status === 401) { window.location.href = '/'; return; }
         if (!response.ok) throw new Error('Erreur lors du chargement des locations');
 
