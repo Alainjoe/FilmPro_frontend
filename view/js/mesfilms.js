@@ -19,7 +19,7 @@ async function loadMesFilms() {
             credentials: 'include'
         });
 
-        if (response.status === 401) { window.location.href = '/'; return; }
+        if (response.status === 401) { window.location.href = '../html/login.html'; return; }
 
         const result = await response.json().catch(() => ({}));
 
@@ -43,7 +43,7 @@ function displayMesFilms(rentals) {
             <div class="empty-state">
                 <h3>Vous n'avez aucune location en cours</h3>
                 <p>Votre bibliothèque est vide pour l'instant. Pourquoi ne pas découvrir un nouveau film ?</p>
-                <a href="/catalogue" class="btn-explore">Explorer les films</a>
+                <a href="../html/catalogue.html" class="btn-explore">Explorer les films</a>
             </div>
         `;
         return;
@@ -126,14 +126,14 @@ async function retournerFilm(filmId) {
     if (!confirm('Êtes-vous sûr de vouloir retourner ce film ?')) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/location/retour`, { // ✅ corrigé
+        const response = await fetch(`${API_BASE_URL}/api/location/retour`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ filmId })
         });
 
-        if (response.status === 401) { window.location.href = '/'; return; }
+        if (response.status === 401) { window.location.href = '../html/login.html'; return; }
 
         const result = await response.json().catch(() => ({}));
 
@@ -156,5 +156,5 @@ function showError(message) {
 document.getElementById('logout-btn').addEventListener('click', async () => {
     try { await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' }); }
     catch (error) { console.error('Erreur déconnexion:', error); }
-    finally { window.location.href = '/'; }
+    finally { window.location.href = '../html/login.html'; }
 });
