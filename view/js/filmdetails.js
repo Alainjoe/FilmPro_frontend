@@ -1,0 +1,214 @@
+const urlParams = new URLSearchParams(window.location.search);
+const filmId = urlParams.get('id');
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (filmId) checkAuth();
+    else showError('ID du film non spécifié.');
+});
+
+async function checkAuth() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/profil`, {
+            credentials: 'include'
+        });
+
+        if (response.ok) loadFilmDetails();
+        else window.location.href = '/';
+    } catch (error) {
+        console.error('Erreur auth:', error);
+        window.location.href = '/';
+    }
+}
+
+async function loadFilmDetails() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/films/${filmId}`, {
+            credentials: 'include'
+        });
+
+        if (response.status === 401) { window.location.href = '/'; return; }
+        if (!response.ok) throw new Error('Erreur serveur');
+
+        const data = await response.json();
+
+        if (data.success && data.data) displayFilmDetails(data.data);
+        else throw new Error(data.message || 'Film non trouvé');
+    } catch (error) {
+        console.error('Erreur:', error);
+        showError(error.message || 'Erreur lors du chargement des détails du film');
+    }
+}
+
+function displayFilmDetails(film) {
+    const filmContent     = document.getElementById('film-content');
+    const availableCopies = film.available_copies || 0;
+    const isAvailable     = availableCopies > 0;
+
+    let actorsList = '<div class="actor-item">Aucune information sur le casting</div>';
+    if (film.acteurs) {
+        const allActors  = film.acteurs.split(',').map(a => a.trim()).filter(Boolean);
+        const mainActors = allActors.slice(0, 10).map(actor => `<div class="actor-item">${actor}</div>`);
+        actorsList = mainActors.join('');
+        if (allActors.length > 10) {
+            actorsList += '<div class="actor-item" style="text-align:center;color:#7f8a9d;">... et autres</div>';
+        }
+    }
+
+    const primaryGenre = film.genre ? film.genre.split(',')[0].trim() : 'Non spécifié';
+    const allGenres    = film.genre || 'Non spécifié';
+
+    const metaItems = [
+        { label: 'Année',  value: film.annee_sortie || 'N/A' },
+        { label: 'Genre',  value: primaryGenre },
+        { label: 'Langue', value: film.langue_originale || 'N/A' },
+        { label: 'Durée',  value: film.duree ? `${film.duree} min` : 'N/A' },
+        { label: 'Pays',   value: film.pays_productions || 'N/A' }
+    ];
+
+    const posterContent = (film.imgPath && film.imgPath.includes('themoviedb.org'))
+        ? `<img src="${film.imgPath}" alt="${film.title}" onerror="this.style.display='none';">`
+        : `
+            <div class="film-poster-fallback">
+                <div class="film-poster-icon">🎬</div>
+                <div class="film-poster-text">${primaryGenre}</div>
+            </div>
+        `;
+
+    const trailerSection = film.trailer
+        ? `
+            <div class="trailer-section">
+                <h3>BANDE-ANNONCE</h3>
+                <div class="trailer-container">
+                    <iframe
+                        src="${film.trailer}"
+                        title="Bande-annonce de ${film.title || ''}"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                    ></iframe>
+                </div>
+            </div>
+        `
+        : `
+            <div class="trailer-section">
+                <h3>BANDE-ANNONCE</h3>
+                <div class="no-trailer">Aucune bande-annonce disponible pour ce film.</div>
+            </div>
+        `;
+
+    const membershipLabel = film.annee_sortie ? `Film ${film.annee_sortie}` : 'Film du catalogue';
+
+    filmContent.innerHTML = `
+        <div class="film-details">
+            <div class="film-header">
+                <div class="film-poster">${posterContent}</div>
+                <div class="film-info">
+                    <h1 class="film-title">${film.title || 'Titre inconnu'}</h1>
+                    <div class="film-subtitle-line">
+                        <span class="film-subtitle">${membershipLabel}</span>
+                        <span class="line"></span>
+                    </div>
+                    <div class="film-meta">
+                        ${metaItems.map(item => `
+                            <div class="meta-item">
+                                <span class="label">${item.label}</span>
+                                <span class="value">${item.value}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="availability ${isAvailable ? '' : 'unavailable'}">
+                        <span class="availability-dot"></span>
+                        ${isAvailable
+                            ? `${availableCopies} copie${availableCopies > 1 ? 's' : ''} disponible${availableCopies > 1 ? 's' : ''}`
+                            : 'Aucune copie disponible actuellement'}
+                    </div>
+                    <div class="film-synopsis">
+                        <span class="synopsis-label">Synopsis</span>
+                        <div>${film.synopsis || 'Aucun synopsis disponible pour ce film.'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="film-content">
+                <div class="info-grid">
+                    <section class="info-section">
+                        <h3><span class="dot"></span> Informations</h3>
+                        <div class="info-item">
+                            <span class="info-label">Réalisateur(s)</span>
+                            <span class="info-value">${film.realisateurs || 'Non spécifié'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Genres</span>
+                            <span class="info-value">${allGenres}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Date de sortie</span>
+                            <span class="info-value">${film.date_sortie || 'Non spécifiée'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Note</span>
+                            <span class="info-value">${film.note ? film.note + '/10' : 'N/A'}</span>
+                        </div>
+                    </section>
+
+                    <section class="info-section">
+                        <h3><span class="dot"></span> Distribution</h3>
+                        <div class="actors-list">${actorsList}</div>
+                    </section>
+                </div>
+
+                ${trailerSection}
+
+                <div class="actions">
+                    ${isAvailable
+                        ? `<button class="btn btn-primary" onclick="louerFilm(${film.id})">Louer ce film</button>`
+                        : `<button class="btn btn-disabled" disabled>Indisponible</button>`}
+                    <a href="/catalogue" class="btn btn-secondary">Retour au catalogue</a>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function louerFilm(filmId) {
+    if (!confirm('Confirmez-vous la location de ce film ?')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/location/location`, { // ✅ corrigé
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ filmId })
+        });
+
+        if (response.status === 401) { window.location.href = '/'; return; }
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.success) {
+            alert('Film loué avec succès !');
+            loadFilmDetails();
+        } else {
+            alert(data.message || 'Erreur lors de la location.');
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la location du film.');
+    }
+}
+
+function showError(message) {
+    document.getElementById('film-content').innerHTML = `
+        <div class="error">
+            ${message}
+            <div class="error-actions">
+                <a href="/catalogue" class="btn btn-secondary">Retour au catalogue</a>
+            </div>
+        </div>
+    `;
+}
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+    try { await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' }); }
+    catch (error) { console.error('Erreur déconnexion:', error); }
+    finally { window.location.href = '/'; }
+});
