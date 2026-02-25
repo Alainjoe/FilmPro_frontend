@@ -1,6 +1,10 @@
 let currentUser = null;
 let allGenres = [];
 
+// 🔥 IMPORTANT : tes pages sont dans /html/
+const LOGIN_PAGE = '/html/login.html';
+const DETAILS_PAGE = '/html/filmdetails.html';
+
 window.addEventListener('scroll', () => {
     const navbar = document.getElementById('navbar');
     if (window.scrollY > 50) navbar.classList.add('scrolled');
@@ -35,7 +39,11 @@ async function checkAuth() {
             credentials: 'include'
         });
 
-        if (response.status === 401) { window.location.href = '/'; return; }
+        // 🔥 CORRECTION RENDER
+        if (response.status === 401) {
+            window.location.href = LOGIN_PAGE;
+            return;
+        }
 
         if (response.ok) {
             const result = await response.json();
@@ -47,7 +55,7 @@ async function checkAuth() {
         }
     } catch (error) {
         console.error('Erreur d\'authentification:', error);
-        window.location.href = '/';
+        window.location.href = LOGIN_PAGE; // 🔥 corrigé
     }
 }
 
@@ -73,12 +81,13 @@ function populateGenreDropdown() {
     const genreSelect = document.getElementById('search-genre');
     genreSelect.innerHTML = '<option value="">Tous les genres</option>';
 
-    ['Action', 'Aventure', 'Drame', 'Comédie', 'Science-Fiction', 'Horreur', 'Romance', 'Documentaire'].forEach(genre => {
-        const option = document.createElement('option');
-        option.value = genre;
-        option.textContent = genre;
-        genreSelect.appendChild(option);
-    });
+    ['Action', 'Aventure', 'Drame', 'Comédie', 'Science-Fiction', 'Horreur', 'Romance', 'Documentaire']
+        .forEach(genre => {
+            const option = document.createElement('option');
+            option.value = genre;
+            option.textContent = genre;
+            genreSelect.appendChild(option);
+        });
 
     if (allGenres && allGenres.length > 0) {
         allGenres.forEach(genre => {
@@ -97,7 +106,11 @@ function displayUserInfo(user) {
     if (!user) return;
 
     const membershipDate = user.date_inscription
-        ? new Date(user.date_inscription).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
+        ? new Date(user.date_inscription).toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        })
         : 'N/A';
 
     userDetails.innerHTML = `
@@ -127,7 +140,11 @@ async function loadFilms(filters = {}) {
 
         const response = await fetch(url, { credentials: 'include' });
 
-        if (response.status === 401) { window.location.href = '/'; return; }
+        // 🔥 CORRECTION RENDER + AUTH
+        if (response.status === 401) {
+            window.location.href = LOGIN_PAGE;
+            return;
+        }
 
         if (response.ok) {
             const result = await response.json();
@@ -201,17 +218,21 @@ function displayFilms(films) {
             <div class="film-image">
                 ${film.imgPath
                     ? `<img src="${film.imgPath}" alt="${film.title || 'Affiche'}"
-                           onerror="this.style.display='none'; this.parentElement.innerHTML=\`${posterFallback}\`;">`
+                       onerror="this.style.display='none'; this.parentElement.innerHTML=\`${posterFallback}\`;">`
                     : posterFallback}
                 <div class="availability ${availabilityClass}">${availabilityText}</div>
                 <div class="film-overlay">
                     <h3 style="margin-bottom:0.5rem;color:#fdfefe;">${film.title || 'Titre inconnu'}</h3>
                     <div class="film-actions">
-                        <button class="btn-small btn-details" onclick="event.stopPropagation(); viewFilmDetails(${film.id});">
+                        <button class="btn-small btn-details"
+                            onclick="event.stopPropagation(); viewFilmDetails(${film.id});">
                             Détails
                         </button>
                         ${isAvailable
-                            ? `<button class="btn-small btn-rent" onclick="event.stopPropagation(); louerFilm(${film.id});">Louer</button>`
+                            ? `<button class="btn-small btn-rent"
+                                onclick="event.stopPropagation(); louerFilm(${film.id});">
+                                Louer
+                               </button>`
                             : `<button class="btn-small btn-disabled" disabled>Indisponible</button>`
                         }
                     </div>
@@ -232,26 +253,9 @@ function displayFilms(films) {
     });
 }
 
-function searchFilms() {
-    const filters = {
-        title: document.getElementById('search-title').value.trim(),
-        name:  document.getElementById('search-name').value.trim(),
-        genre: document.getElementById('search-genre').value
-    };
-
-    Object.keys(filters).forEach(key => { if (!filters[key]) delete filters[key]; });
-    loadFilms(filters);
-}
-
-function clearSearch() {
-    document.getElementById('search-title').value = '';
-    document.getElementById('search-name').value  = '';
-    document.getElementById('search-genre').value = '';
-    loadFilms();
-}
-
+// 🔥 CORRECTION PRINCIPALE (OUVERTURE DES FILMS)
 function viewFilmDetails(filmId) {
-    window.location.href = `/filmdetails?id=${filmId}`;
+    window.location.href = `${DETAILS_PAGE}?id=${filmId}`;
 }
 
 async function louerFilm(filmId) {
@@ -265,7 +269,10 @@ async function louerFilm(filmId) {
             body: JSON.stringify({ filmId })
         });
 
-        if (response.status === 401) { window.location.href = '/'; return; }
+        if (response.status === 401) {
+            window.location.href = LOGIN_PAGE;
+            return;
+        }
 
         const result = await response.json();
 
@@ -286,11 +293,16 @@ async function louerFilm(filmId) {
 }
 
 function showError(message) {
-    document.getElementById('films-container').innerHTML = `<div class="error">${message}</div>`;
+    document.getElementById('films-container').innerHTML =
+        `<div class="error">${message}</div>`;
 }
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
-    try { await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' }); }
-    catch (error) { console.error('Erreur de déconnexion:', error); }
-    finally { window.location.href = '/'; }
+    try {
+        await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' });
+    } catch (error) {
+        console.error('Erreur de déconnexion:', error);
+    } finally {
+        window.location.href = LOGIN_PAGE; // 🔥 corrigé
+    }
 });
