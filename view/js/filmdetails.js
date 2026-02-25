@@ -87,7 +87,8 @@ function displayFilmDetails(film) {
     { label: "Pays", value: film.pays_productions || "N/A" },
   ];
 
-  const posterContent =
+  // AVANT
+const posterContent =
     film.imgPath && film.imgPath.includes("themoviedb.org")
       ? `<img src="${film.imgPath}" alt="${film.title || "Affiche"}" onerror="this.style.display='none';">`
       : `
