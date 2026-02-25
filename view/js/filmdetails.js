@@ -209,7 +209,7 @@ async function louerFilm(filmId) {
   if (!confirm("Confirmez-vous la location de ce film ?")) return;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/rentals/location`, {
+    const response = await fetch(`${API_BASE_URL}/api/location/location`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
