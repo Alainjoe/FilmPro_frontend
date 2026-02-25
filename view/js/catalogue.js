@@ -1,7 +1,6 @@
 let currentUser = null;
 let allGenres = [];
 
-// 🔥 IMPORTANT : tes pages sont dans /html/
 const LOGIN_PAGE = '/html/login.html';
 const DETAILS_PAGE = '/html/filmdetails.html';
 
@@ -39,7 +38,6 @@ async function checkAuth() {
             credentials: 'include'
         });
 
-        // 🔥 CORRECTION RENDER
         if (response.status === 401) {
             window.location.href = LOGIN_PAGE;
             return;
@@ -55,7 +53,7 @@ async function checkAuth() {
         }
     } catch (error) {
         console.error('Erreur d\'authentification:', error);
-        window.location.href = LOGIN_PAGE; // 🔥 corrigé
+        window.location.href = LOGIN_PAGE; 
     }
 }
 
@@ -139,8 +137,6 @@ async function loadFilms(filters = {}) {
         }
 
         const response = await fetch(url, { credentials: 'include' });
-
-        // 🔥 CORRECTION RENDER + AUTH
         if (response.status === 401) {
             window.location.href = LOGIN_PAGE;
             return;
@@ -253,7 +249,6 @@ function displayFilms(films) {
     });
 }
 
-// 🔥 CORRECTION PRINCIPALE (OUVERTURE DES FILMS)
 function viewFilmDetails(filmId) {
     window.location.href = `${DETAILS_PAGE}?id=${filmId}`;
 }
@@ -303,6 +298,5 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
     } catch (error) {
         console.error('Erreur de déconnexion:', error);
     } finally {
-        window.location.href = LOGIN_PAGE; // 🔥 corrigé
-    }
+        window.location.href = LOGIN_PAGE;
 });
