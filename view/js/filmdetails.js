@@ -2,8 +2,8 @@ const urlParams = new URLSearchParams(window.location.search);
 const filmId = urlParams.get("id");
 
 // ✅ Pages statiques Render
-const LOGIN_PAGE = "/html/login.html";
-const CATALOGUE_PAGE = "/html/catalogue.html";
+const LOGIN_PAGE = "./html/login.html";
+const CATALOGUE_PAGE = "./html/catalogue.html";
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!filmId) return showError("ID du film non spécifié.");
