@@ -1,271 +1,369 @@
-let userStats = { totalRentals: 0, activeRentals: 0, returnedRentals: 0 };
+let currentUser = null;
+let allGenres = [];
 
+// ===================================
+// SCROLL NAVBAR
+// ===================================
 window.addEventListener('scroll', () => {
     const navbar = document.getElementById('navbar');
     if (window.scrollY > 50) navbar.classList.add('scrolled');
     else navbar.classList.remove('scrolled');
 });
 
+// ===================================
+// INIT
+// ===================================
 document.addEventListener('DOMContentLoaded', () => {
-    loadProfile();
+    checkAuth();
+    loadGenres();
+    showSkeleton();
 });
 
-async function loadProfile() {
-    const profileContent = document.getElementById('profile-content');
-    profileContent.innerHTML = `
-        <div class="card">
-            <div class="loading">Chargement de votre profil...</div>
-        </div>
-    `;
+// ===================================
+// SKELETON LOADING
+// ===================================
+function showSkeleton(count = 6) {
+    const container = document.getElementById('films-container');
+    let html = '';
+    for (let i = 0; i < count; i++) {
+        html += `
+            <div class="skeleton-card">
+                <div class="skeleton-thumb">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-line wide">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-line mid">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+                <div class="skeleton-line small">
+                    <div class="skeleton-shimmer"></div>
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
 
+// ===================================
+// AUTHENTIFICATION
+// ===================================
+async function checkAuth() {
     try {
         const response = await fetch(`${API_BASE_URL}/api/profil`, {
             credentials: 'include'
         });
 
-        if (response.status === 401) { window.location.href = '/'; return; }
-        if (!response.ok) throw new Error('Erreur lors du chargement du profil');
+        if (response.status === 401) {
+            window.location.href = '/';
+            return;
+        }
 
-        const result = await response.json();
-        if (!result.success || !result.data) throw new Error(result.message || 'Profil introuvable');
-
-        displayProfile(result.data);
-        loadRentalStats();
-    } catch (e) {
-        showError(e.message || 'Erreur lors du chargement du profil');
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+                currentUser = result.data;
+                displayUserInfo(currentUser);
+                loadFilms();
+            }
+        }
+    } catch (error) {
+        console.error('Erreur d\'authentification:', error);
+        window.location.href = '/';
     }
 }
 
-function displayProfile(user) {
-    const profileContent = document.getElementById('profile-content');
+// ===================================
+// GENRES
+// ===================================
+async function loadGenres() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/films/metadata/genres`, {
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+                allGenres = result.data;
+                populateGenreDropdown();
+            }
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement des genres:', error);
+    }
+}
+
+function populateGenreDropdown() {
+    const genreSelect = document.getElementById('search-genre');
+    genreSelect.innerHTML = '<option value="">Tous les genres</option>';
+
+    ['Action', 'Aventure', 'Drame', 'Comédie', 'Science-Fiction', 'Horreur', 'Romance', 'Documentaire'].forEach(genre => {
+        const option = document.createElement('option');
+        option.value = genre;
+        option.textContent = genre;
+        genreSelect.appendChild(option);
+    });
+
+    if (allGenres && allGenres.length > 0) {
+        allGenres.forEach(genre => {
+            if (genre && !genreSelect.querySelector(`option[value="${genre}"]`)) {
+                const option = document.createElement('option');
+                option.value = genre;
+                option.textContent = genre;
+                genreSelect.appendChild(option);
+            }
+        });
+    }
+}
+
+// ===================================
+// INFOS UTILISATEUR
+// ===================================
+function displayUserInfo(user) {
+    const userDetails = document.getElementById('user-details');
+    if (!user) return;
 
     const membershipDate = user.date_inscription
-        ? new Date(user.date_inscription).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
+        ? new Date(user.date_inscription).toLocaleDateString('fr-FR', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        })
         : 'N/A';
 
-    const initial = user.name ? user.name.trim().charAt(0).toUpperCase() : 'U';
-
-    profileContent.innerHTML = `
-        <div class="profile-layout">
-            <section class="card">
-                <h3><span class="dot"></span> Profil utilisateur</h3>
-                <div class="profile-header">
-                    <div class="avatar-wrapper">
-                        <div class="avatar-ring"></div>
-                        <div class="profile-avatar">${initial}</div>
-                    </div>
-                    <div class="profile-info">
-                        <h2>${user.name || user.email}</h2>
-                        <p>${user.email}</p>
-                        <div class="profile-meta">Membre depuis <strong>${membershipDate}</strong></div>
-                        <div class="profile-badges">
-                            <span class="badge badge-premium">FilmPro Premium</span>
-                            <span class="badge badge-member">Compte actif</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="info-grid">
-                    <div class="info-card-inner">
-                        <div class="info-label">Nom complet</div>
-                        <div class="info-value">${user.name || 'Non renseigné'}</div>
-                    </div>
-                    <div class="info-card-inner">
-                        <div class="info-label">Adresse email</div>
-                        <div class="info-value">${user.email}</div>
-                    </div>
-                    <div class="info-card-inner">
-                        <div class="info-label">Date d'inscription</div>
-                        <div class="info-value">${membershipDate}</div>
-                    </div>
-                </div>
-                <div class="stats-grid" id="stats-section">
-                    <div class="loading">Chargement de vos statistiques...</div>
-                </div>
-            </section>
-
-            <section class="card">
-                <h3><span class="dot"></span> Modifier le profil</h3>
-                <div id="profile-alert" class="alert"></div>
-                <form id="profile-form">
-                    <div class="form-group">
-                        <label for="profileName">Nom complet</label>
-                        <input type="text" id="profileName" value="${user.name || ''}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="profileEmail">Adresse email</label>
-                        <input type="email" id="profileEmail" value="${user.email || ''}" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Mettre à jour le profil</button>
-                </form>
-            </section>
-
-            <section class="card">
-                <h3><span class="dot"></span> Sécurité du compte</h3>
-                <div id="password-alert" class="alert"></div>
-                <form id="password-form">
-                    <div class="form-group">
-                        <label for="currentPassword">Ancien mot de passe</label>
-                        <input type="password" id="currentPassword" required minlength="6">
-                    </div>
-                    <div class="form-group">
-                        <label for="newPassword">Nouveau mot de passe</label>
-                        <input type="password" id="newPassword" required minlength="6">
-                    </div>
-                    <div class="form-group">
-                        <label for="confirmPassword">Confirmer le mot de passe</label>
-                        <input type="password" id="confirmPassword" required minlength="6">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Modifier le mot de passe</button>
-                </form>
-            </section>
-
-            <section class="card">
-                <h3><span class="dot" style="background:#ff6b6b; box-shadow:0 0 16px rgba(255,107,107,0.9);"></span> Supprimer le compte</h3>
-                <div id="delete-alert" class="alert"></div>
-                <p class="danger-text">
-                    Attention : la suppression de votre compte est <strong>définitive</strong>.
-                    Toutes vos informations et votre historique de location seront supprimés.
-                </p>
-                <button type="button" class="btn btn-danger" id="delete-account-btn">Supprimer mon compte</button>
-            </section>
+    userDetails.innerHTML = `
+        <p><strong>${user.name || user.email}</strong></p>
+        <small>${user.email} • Membre depuis ${membershipDate}</small>
+        <div style="margin-top: 0.8rem; font-size: 0.9rem; color: #9bb2c7;">
+            <span style="color: #00b4ff;">●</span>
+            ${user.films_loues || 0} film(s) loué(s)
         </div>
     `;
-
-    setupProfileForm();
-    setupPasswordForm();
-    setupDeleteAccount();
 }
 
-async function loadRentalStats() {
+// ===================================
+// CHARGEMENT DES FILMS
+// ===================================
+async function loadFilms(filters = {}) {
+    showSkeleton();
+
     try {
-        const response = await fetch(`${API_BASE_URL}/api/profil/mesfilms`, { credentials: 'include' });
-        if (response.status === 401) { window.location.href = '/'; return; }
-        if (!response.ok) throw new Error('Erreur lors du chargement des locations');
+        let url = `${API_BASE_URL}/api/films`;
+        const params = new URLSearchParams();
 
-        const result = await response.json();
-        if (!result.success || !Array.isArray(result.data)) throw new Error(result.message || 'Impossible de récupérer vos locations');
+        if (filters.title) params.append('title', filters.title);
+        if (filters.name)  params.append('name', filters.name);
+        if (filters.genre) params.append('genre', filters.genre);
 
-        updateRentalStats(result.data);
-    } catch (e) {
-        console.error(e);
-        const statsSection = document.getElementById('stats-section');
-        if (statsSection) statsSection.innerHTML = `<div class="loading" style="color:#ffb3b3;">${e.message}</div>`;
+        if (params.toString()) {
+            url = `${API_BASE_URL}/api/films/search?${params.toString()}`;
+        }
+
+        const response = await fetch(url, { credentials: 'include' });
+
+        if (response.status === 401) {
+            window.location.href = '/';
+            return;
+        }
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                displayFilms(result.data);
+                updateSearchResultsInfo(result.data.length, filters);
+            } else {
+                showError(result.message || 'Aucun film trouvé');
+            }
+        } else {
+            throw new Error(`Erreur HTTP : ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        showError(error.message || 'Erreur lors du chargement des films');
     }
 }
 
-function updateRentalStats(rentals) {
-    userStats.totalRentals    = rentals.length;
-    userStats.activeRentals   = rentals.filter(r => !r.return_date).length;
-    userStats.returnedRentals = rentals.filter(r => r.return_date).length;
+// ===================================
+// INFO RÉSULTATS RECHERCHE
+// ===================================
+function updateSearchResultsInfo(count, filters) {
+    const infoElement = document.getElementById('search-results-info');
+    const hasFilters = Object.keys(filters).length > 0;
 
-    const statsSection = document.getElementById('stats-section');
-    if (!statsSection) return;
+    if (hasFilters) {
+        let filterText = [];
+        if (filters.title) filterText.push(`titre : "${filters.title}"`);
+        if (filters.name)  filterText.push(`nom : "${filters.name}"`);
+        if (filters.genre) filterText.push(`genre : "${filters.genre}"`);
 
-    statsSection.innerHTML = `
-        <div class="stat-card">
-            <div class="stat-number">${userStats.totalRentals}</div>
-            <div class="stat-label">Total</div>
-            <div class="stat-badge">Historique complet</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">${userStats.activeRentals}</div>
-            <div class="stat-label">En cours</div>
-            <div class="stat-badge">Films à rendre</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number">${userStats.returnedRentals}</div>
-            <div class="stat-label">Retournés</div>
-            <div class="stat-badge">Merci pour votre retour</div>
-        </div>
-    `;
+        infoElement.innerHTML = `
+            <div class="search-results-info">
+                <strong>${count}</strong> résultat${count > 1 ? 's' : ''} trouvé${count > 1 ? 's' : ''}
+                ${filterText.length > 0 ? `<small>${filterText.join(' | ')}</small>` : ''}
+            </div>
+        `;
+    } else {
+        infoElement.innerHTML = '';
+    }
 }
 
-function setupProfileForm() {
-    const form    = document.getElementById('profile-form');
-    const alertEl = document.getElementById('profile-alert');
-    if (!form) return;
+// ===================================
+// AFFICHAGE DES FILMS
+// ===================================
+function displayFilms(films) {
+    const container = document.getElementById('films-container');
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const name  = document.getElementById('profileName').value.trim();
-        const email = document.getElementById('profileEmail').value.trim();
-        if (!name || !email) { showAlert('Tous les champs sont obligatoires', 'error', alertEl); return; }
+    if (!films || films.length === 0) {
+        container.innerHTML = '<div class="error">Aucun film ne correspond à vos critères.</div>';
+        return;
+    }
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/profil/update`, {
-                method: 'PUT', credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email })
-            });
-            const result = await response.json().catch(() => ({}));
-            if (response.ok && result.success) { showAlert('Profil mis à jour avec succès.', 'success', alertEl); loadProfile(); }
-            else showAlert(result.message || 'Erreur lors de la mise à jour du profil', 'error', alertEl);
-        } catch (e) { showAlert('Erreur serveur', 'error', alertEl); }
+    container.innerHTML = '';
+
+    films.forEach(film => {
+        const availableCopies = film.available_copies || 0;
+        const isAvailable = availableCopies > 0;
+        const availabilityClass = isAvailable ? 'available' : 'unavailable';
+        const availabilityText = isAvailable
+            ? `${availableCopies} copie${availableCopies > 1 ? 's' : ''} disponible${availableCopies > 1 ? 's' : ''}`
+            : 'Indisponible';
+
+        const posterFallback = `
+            <div style="text-align:center;color:#e7f4ff;padding:1rem;">
+                <div style="font-size:2.3rem;margin-bottom:0.5rem;">🎬</div>
+                <div style="font-size:0.8rem;text-transform:uppercase;letter-spacing:1px;">
+                    ${film.genre ? film.genre.split(',')[0] : 'Film'}
+                </div>
+            </div>
+        `;
+
+        const filmCard = document.createElement('div');
+        filmCard.className = 'film-card';
+
+        filmCard.innerHTML = `
+            <div class="film-image">
+                ${film.imgPath
+                    ? `<img src="${film.imgPath}" alt="${film.title || 'Affiche'}"
+                           onerror="this.style.display='none'; this.parentElement.innerHTML=\`${posterFallback}\`;">`
+                    : posterFallback}
+                <div class="availability ${availabilityClass}">${availabilityText}</div>
+                <div class="film-overlay">
+                    <h3 style="margin-bottom:0.5rem;color:#fdfefe;">${film.title || 'Titre inconnu'}</h3>
+                    <div class="film-actions">
+                        <button class="btn-small btn-details" onclick="event.stopPropagation(); viewFilmDetails(${film.id});">
+                            Détails
+                        </button>
+                        ${isAvailable
+                            ? `<button class="btn-small btn-rent" onclick="event.stopPropagation(); louerFilm(${film.id});">
+                                   Louer
+                               </button>`
+                            : `<button class="btn-small btn-disabled" disabled>
+                                   Indisponible
+                               </button>`}
+                    </div>
+                </div>
+            </div>
+            <div class="film-content">
+                <h3>${film.title || 'Titre non disponible'}</h3>
+                <div class="film-meta">
+                    <span>${film.annee_sortie || 'N/A'}</span>
+                    <span>${film.genre ? film.genre.split(',')[0] : ''}</span>
+                </div>
+                <p>${film.realisateurs || 'Réalisateur non spécifié'}</p>
+            </div>
+        `;
+
+        filmCard.addEventListener('click', () => viewFilmDetails(film.id));
+        container.appendChild(filmCard);
     });
 }
 
-function setupPasswordForm() {
-    const form    = document.getElementById('password-form');
-    const alertEl = document.getElementById('password-alert');
-    if (!form) return;
+// ===================================
+// RECHERCHE
+// ===================================
+function searchFilms() {
+    const filters = {
+        title: document.getElementById('search-title').value.trim(),
+        name:  document.getElementById('search-name').value.trim(),
+        genre: document.getElementById('search-genre').value
+    };
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const currentPassword = document.getElementById('currentPassword').value;
-        const newPassword     = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        if (newPassword !== confirmPassword) { showAlert('Les mots de passe ne correspondent pas', 'error', alertEl); return; }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/profil/password`, {
-                method: 'PUT', credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ currentPassword, newPassword })
-            });
-            const result = await response.json().catch(() => ({}));
-            if (response.ok && result.success) { showAlert('Mot de passe modifié avec succès !', 'success', alertEl); form.reset(); }
-            else showAlert(result.message || 'Erreur lors de la modification du mot de passe', 'error', alertEl);
-        } catch (e) { showAlert('Erreur serveur', 'error', alertEl); }
+    Object.keys(filters).forEach(key => {
+        if (!filters[key]) delete filters[key];
     });
+
+    loadFilms(filters);
 }
 
-function setupDeleteAccount() {
-    const btn     = document.getElementById('delete-account-btn');
-    const alertEl = document.getElementById('delete-alert');
-    if (!btn) return;
-
-    btn.addEventListener('click', async () => {
-        if (!confirm('Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible.')) return;
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/profil/delete`, { method: 'DELETE', credentials: 'include' });
-            const result = await response.json().catch(() => ({}));
-            if (response.ok && result.success) {
-                showAlert('Compte supprimé avec succès. Vous allez être redirigé.', 'success', alertEl);
-                setTimeout(() => { window.location.href = '/'; }, 2000);
-            } else showAlert(result.message || 'Erreur lors de la suppression du compte', 'error', alertEl);
-        } catch (e) { showAlert('Erreur serveur', 'error', alertEl); }
-    });
+function clearSearch() {
+    document.getElementById('search-title').value = '';
+    document.getElementById('search-name').value  = '';
+    document.getElementById('search-genre').value = '';
+    document.getElementById('search-results-info').innerHTML = '';
+    loadFilms();
 }
 
-function showAlert(message, type, element) {
-    if (!element) return;
-    element.textContent = message;
-    element.className = 'alert ' + (type === 'success' ? 'alert-success' : 'alert-error');
-    element.style.display = 'block';
-    setTimeout(() => { element.style.display = 'none'; }, 5000);
+// ===================================
+// DÉTAILS D'UN FILM
+// ===================================
+function viewFilmDetails(filmId) {
+    window.location.href = `../html/filmdetails.html?id=${filmId}`;
 }
 
+// ===================================
+// LOCATION
+// ===================================
+async function louerFilm(filmId) {
+    if (!confirm('Confirmez-vous la location de ce film ?')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/rentals/location`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filmId })
+        });
+
+        if (response.status === 401) {
+            window.location.href = '/';
+            return;
+        }
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            alert('Film loué avec succès !');
+            loadFilms();
+            if (currentUser) {
+                currentUser.films_loues = (currentUser.films_loues || 0) + 1;
+                displayUserInfo(currentUser);
+            }
+        } else {
+            alert(result.message || 'Erreur lors de la location');
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la location du film');
+    }
+}
+
+// ===================================
+// ERREUR
+// ===================================
 function showError(message) {
-    document.getElementById('profile-content').innerHTML = `
-        <div class="card">
-            <div class="alert alert-error" style="display:block;">${message}</div>
-        </div>
-    `;
+    const container = document.getElementById('films-container');
+    container.innerHTML = `<div class="error">${message}</div>`;
 }
 
+// ===================================
+// DÉCONNEXION
+// ===================================
 document.getElementById('logout-btn').addEventListener('click', async () => {
-    try { await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' }); }
-    catch (e) { console.error('Erreur déconnexion:', e); }
-    finally { window.location.href = '/'; }
+    try {
+        await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' });
+    } catch (error) {
+        console.error('Erreur de déconnexion:', error);
+    } finally {
+        window.location.href = '/';
+    }
 });
