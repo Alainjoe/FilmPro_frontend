@@ -1,7 +1,6 @@
 const urlParams = new URLSearchParams(window.location.search);
 const filmId = urlParams.get('id');
 
-// ✅ Pages statiques sur Render : tout est dans /html/
 const LOGIN_PAGE = '/html/login.html';        // change si ton login a un autre nom
 const CATALOGUE_PAGE = '/html/catalogue.html';
 
@@ -17,10 +16,10 @@ async function checkAuth() {
     });
 
     if (response.ok) loadFilmDetails();
-    else window.location.href = LOGIN_PAGE;  // ✅ au lieu de '/'
+    else window.location.href = LOGIN_PAGE; 
   } catch (error) {
     console.error('Erreur auth:', error);
-    window.location.href = LOGIN_PAGE;       // ✅ au lieu de '/'
+    window.location.href = LOGIN_PAGE; 
   }
 }
 
@@ -30,7 +29,7 @@ async function loadFilmDetails() {
       credentials: 'include'
     });
 
-    if (response.status === 401) { window.location.href = LOGIN_PAGE; return; } // ✅
+    if (response.status === 401) { window.location.href = LOGIN_PAGE; return; }
     if (!response.ok) throw new Error('Erreur serveur');
 
     const data = await response.json();
@@ -206,7 +205,6 @@ function showError(message) {
     <div class="error">
       ${message}
       <div class="error-actions">
-        <!-- ✅ au lieu de /catalogue -->
         <a href="${CATALOGUE_PAGE}" class="btn btn-secondary">Retour au catalogue</a>
       </div>
     </div>
@@ -216,5 +214,5 @@ function showError(message) {
 document.getElementById('logout-btn').addEventListener('click', async () => {
   try { await fetch(`${API_BASE_URL}/api/auth/logout`, { credentials: 'include' }); }
   catch (error) { console.error('Erreur déconnexion:', error); }
-  finally { window.location.href = LOGIN_PAGE; } // ✅ au lieu de '/'
+  finally { window.location.href = LOGIN_PAGE; }
 });
